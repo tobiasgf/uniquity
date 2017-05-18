@@ -194,24 +194,3 @@ tab <- sstable
   result <- list(simple_site_score=site_cores, uniquity_score=Uniqueness, adjusted_uniquity=Adj_uniquity, uniquity_table=Uniquenss_table, uniquity_species_scores=Unique_species, Summed_species_weights=spw, Average_species_weight_pr_site=average_ssw, Top20_unique_sites=top10, Top20_unique_species=top10sp, removed_singleton_species=removed_species, Accumulated_uniqueness=total_table, site_richness=spr)
   return(result)
 }
-
-#setwd("~/Documents/BIOWIDE/BIOWIDE_MANUSCRIPTS/Uniquity_method")
-#main_path <- "~/Documents/BIOWIDE/BIOWIDE_MANUSCRIPTS/Uniquity_method" 
-#path <- file.path(main_path)
-#tab_name <- file.path(main_path,"Plants2016_Genus_species_uniquity_approach.txt")
-#Gen_sp_tab <- read.table(tab_name, sep="\t", header=TRUE, as.is=TRUE,fill = TRUE,quote = "", row.names = 1)
-#sstab <- data.frame(t(Gen_sp_tab))
-
-#tab_name <- file.path(main_path,"BW_classes2.txt")
-#class2 <- read.table(tab_name, sep="\t", header=TRUE, as.is=TRUE)
-#tab_name <- file.path(main_path,"BW_weights.txt")
-#weight <- read.table(tab_name, sep="\t", header=TRUE, as.is=TRUE)
-
-#sstable <- sstab
-#classes = class2
-#weights = weight
-#presabs = TRUE
-#rep = 100
-#size = 0.66
-#refspecies = 0
-#rem_single = FALSE
