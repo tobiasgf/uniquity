@@ -1,0 +1,12 @@
+Package: uniquity
+Type: Package
+Title: estimating uniquity of a site
+Version: 0.1.0
+Authors@R: person("Tobias", "Guldberg Frøslev", email = "tobiasgf@snm.ku.dk",
+    role = c("aut", "cre"))
+Maintainer: The package maintainer <yourself@somewhere.net>
+Description: The uniquity algorithm bla bla. 
+License: GNU General Public License v3 (GPL-3)
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 6.0.1
