@@ -199,7 +199,11 @@ tab <- sstable
   if (size<1) {rfp <- size*nsi} else {rfp <- size} # are we using absolute sample size or relative (how many reference sites to construct)
   if (spec_acc_size>0) {
    specac <- specaccum(sstable)
-   rfp <- which(abs(specac$richness-max(specac$richness)*spec_acc_size) == min(abs((specac$richness-max(specac$richness)*spec_acc_size)))) # set nsites to the number of sites where 75% of the species have been sampled. 
+   if (spec_acc_size > 1){
+    rfp <- which(abs(specac$richness-spec_acc_size) == min(abs((specac$richness-spec_acc_size))))
+   } else {
+    rfp <- which(abs(specac$richness-max(specac$richness)*spec_acc_size) == min(abs((specac$richness-max(specac$richness)*spec_acc_size)))) # set nsites to the number of sites where 75% of the species have been sampled. 
+   }
   }
   
   lr <- nsi*rep*rfp # calculate loop rounds (to be able to make "progress bar")
