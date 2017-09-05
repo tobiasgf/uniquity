@@ -72,15 +72,6 @@
 # refspecies: input number of species to draw for each reference site. (0: use random)
 # ssrsp: the actual number of species being drawn for each reference site.
 
-
- sstable=sstabX
- classes = class2
- weights = weight
- rep=100
- spec_acc_size = 0.75
- non_correspondence = T
-
-
 uniquity <- function(sstable, classes = NULL, weights = NULL, presabs = TRUE, rep = 100, size = 0, spec_acc_size = 0.75, refspecies = 0, abundance_cutoff = 0, replace_sp = FALSE, non_correspondence = FALSE){
   #Exclude singletons if selected
 
