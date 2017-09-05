@@ -14,6 +14,10 @@
 #' each each compare. If \code{size} < 1, the algorithm uses that proportion
 #'   of the sites investigated as the number of reference sites. If \code{size} =>1, that absolute number
 #'   of reference sites wll be constructed. Default is 0.66 (=66\% of samples/sites)
+#' @param spec_acc_size any number between 0 and 1. The number of reference sites to construct
+#' will be based a species accumulation curve, so that the number of sites where the fraction \code{spec_acc_size}
+#'  of species are sampled.
+#' This option will be used when \code{spec_acc_size} >0, otherwise the settings of \code{size} will be used.
 #' @param rep any positive integer. The number of replicates pr site evaluation.
 #' (i.e. the number of times to construct a pool of reference sites for evaluating each site/sample). Default is 100.
 #' @param presabs TRUE/FALSE. reduce species/site matrix to presence absence (0/1). Default is TRUE
@@ -21,8 +25,10 @@
 #' reference site. If \code{refspecies} = 0,  the function to draw a random figure based on
 #' the species richness and weight of investigated sites. Any other figure will 
 #' result in a fixed number being drawn for each reference site.
-#' @param rem_single TRUE/FALSE. remove species that only occurs in one site
+#' @param abundance_cutoff any integer. Remove species that occur in \code{size} sites or less
 #' before simulation. Default = FALSE
+#' @param replace_sp TRUE/FALSE. sample species with replacement.
+#' Default = FALSE
 #' @return Function \code{uniquity} returns a list of results based on the input
 #' table and parameters.
 #'   \enumerate{
@@ -39,7 +45,7 @@
 #'   \item \code{site_richness} species richness per site.}
 #' @examples
 #' uniquity(my_table)
-#' uniquity(my_table, my_classes, my_weights, presabs = FALSE, rep = 50, size = 100, refspecies = 50, rem_single = TRUE)
+#' uniquity(my_table, my_classes, my_weights, presabs = FALSE, rep = 50, size = 0, spec_acc_size = 0.75, refspecies = 50, abundance_cutoff = 1, replace_sp = FALSE, non_correspondence = FALSE)
 #' @author Tobias Guldberg Frøslev
 #' @export
 
@@ -66,13 +72,27 @@
 # refspecies: input number of species to draw for each reference site. (0: use random)
 # ssrsp: the actual number of species being drawn for each reference site.
 
-uniquity <- function(sstable, classes = NULL, weights = NULL, presabs = TRUE, rep = 100, size = 0.66, refspecies = 0, rem_single = FALSE){
+
+ sstable=sstabX
+ classes = class2
+ weights = weight
+ rep=100
+ spec_acc_size = 0.75
+ non_correspondence = T
+
+
+uniquity <- function(sstable, classes = NULL, weights = NULL, presabs = TRUE, rep = 100, size = 0, spec_acc_size = 0.75, refspecies = 0, abundance_cutoff = 0, replace_sp = FALSE, non_correspondence = FALSE){
   #Exclude singletons if selected
 
-#Check if a species/site table is present
+require(vegan)
+ 
+#Check if a species/site table is present 
 if (missing(sstable)) stop("Need to specify a valid species/site matrix as a data.frame with sites as rownames and species/OTUs as column names")
 
 sstable_names <- row.names(sstable)
+
+removed_classes <- NULL
+removed_sites <- NULL
 
 #Check if valid combination of classes and weights are present.
 if (is.null(classes)) {
@@ -97,10 +117,22 @@ sstable_uniq <- paste(setdiff(sorted_sstable_names,sorted_class_site_names),coll
 class_uniq <- paste(setdiff(sorted_class_site_names,sorted_sstable_names),collapse=" ")
 
 if(!identical(sorted_sstable_names, sorted_class_site_names)){
+ if(non_correspondence){
+  common_site_names <- intersect(sorted_sstable_names,sorted_class_site_names)
+  rem_s_uniq <- paste(setdiff(sorted_sstable_names,common_site_names),collapse=" ")
+  rem_c_uniq <- paste(setdiff(sorted_class_site_names,common_site_names),collapse=" ")
+  message("Non-identical classes between classes and weights")
+  message(paste("removing the following from the species_site_table:",rem_s_uniq))
+  message(paste("removing the following from the class file:",rem_c_uniq))
+  removed_sites <- paste(rem_s_uniq,rem_c_uniq,collapse=" ")
+  sstable <- sstable[row.names(sstable) %in% common_site_names,]
+  classes <- classes[classes$site %in% common_site_names,]
+ } else {
   message("Site/sample names are not identical between site/species matrix and class-data")
   message(paste("unique to site/species table:",sstable_uniq))
   message(paste("unique to classes:",class_uniq))
   stop("stopped!")
+ }
 }
 
 sorted_class_site_classes <- sort(names(table(classes$class)))
@@ -109,19 +141,55 @@ sorted_weight_classes <- sort(weights$class)
 class_uniq <- paste(setdiff(sorted_class_site_classes,sorted_weight_classes),collapse=" ")
 weight_uniq <- paste(setdiff(sorted_weight_classes,sorted_class_site_classes),collapse=" ")
 
-if(!identical(sorted_sstable_names, sorted_class_site_names)){
+if(!identical(sorted_class_site_classes, sorted_weight_classes)){
+ if(non_correspondence){
+  common_class_names <- intersect(sorted_class_site_classes, sorted_weight_classes)
+  rem_c_uniq <- paste(setdiff(sorted_class_site_classes,common_class_names),collapse=" ")
+  rem_w_uniq <- paste(setdiff(sorted_weight_classes,common_class_names),collapse=" ")
+  message("Non-identical classes between classes and weights")
+  message(paste("removing the following from the class file:",rem_c_uniq))
+  message(paste("removing the following from the weight file:",rem_w_uniq))
+  classes <- classes[classes$class %in% common_class_names,]
+  weights <- weights[weights$class %in% common_class_names,]
+  removed_classes <- paste(rem_w_uniq,rem_c_uniq,collapse=" ")
+  } else {
   message("Names of classes  are not identical between class data and weight data")
   message(paste("class names unique to classes:",class_uniq))
   message(paste("class names unique to weights:",weight_uniq))
   stop("stopped!")
+  }
 }
 
+
+sorted_sstable_names <- as.character(sort(sstable_names))
+sorted_class_site_names <- as.character(sort(classes$site))
+
+sstable_uniq <- paste(setdiff(sorted_sstable_names,sorted_class_site_names),collapse=" ")
+class_uniq <- paste(setdiff(sorted_class_site_names,sorted_sstable_names),collapse=" ")
+
+if(!identical(sorted_sstable_names, sorted_class_site_names)){
+ if(non_correspondence){
+  common_site_names <- intersect(sorted_sstable_names,sorted_class_site_names)
+  rem_s_uniq <- paste(setdiff(sorted_sstable_names,common_site_names),collapse=" ")
+  rem_c_uniq <- paste(setdiff(sorted_class_site_names,common_site_names),collapse=" ")
+  message("Non-identical classes between classes and weights")
+  message(paste("removing the following from the species_site_table:",rem_s_uniq))
+  message(paste("removing the following from the class file:",rem_c_uniq))
+  removed_sites <- paste(removed_sites,rem_s_uniq,rem_c_uniq,collapse=" ")
+  sstable <- sstable[row.names(sstable) %in% common_site_names,]
+  classes <- classes[classes$site %in% common_site_names,]
+}
+}
+
+
+sstable_names <- row.names(sstable)
+
 removed_species = NULL
-  if (rem_single){
-    sstable <- sstable[,colSums(sstable) > 1]
-    removed_species <- names(sstable[,colSums(sstable) < 2])
+  if (abundance_cutoff > 1){
+   removed_species <- names(sstable[,colSums(sstable) < (abundance_cutoff+1)])
+   sstable <- sstable[,colSums(sstable) > abundance_cutoff]
   }
-  
+
 tab <- sstable
   #distribute class weights equally among sites assigned to each class
   claw <- as.data.frame(1/table(classes$class)) #  proportion of weight to assign to each site within each class
@@ -135,9 +203,14 @@ tab <- sstable
   nsi <- nrow(tab) # number of sites
   nsp <- ncol(tab) # number of species/otus
   spr <- rowSums(tab>0) # Get number of species
-  names(tab)
+
   #Setting resampling parameters
   if (size<1) {rfp <- size*nsi} else {rfp <- size} # are we using absolute sample size or relative (how many reference sites to construct)
+  if (spec_acc_size>0) {
+   specac <- specaccum(sstable)
+   rfp <- which(abs(specac$richness-max(specac$richness)*spec_acc_size) == min(abs((specac$richness-max(specac$richness)*spec_acc_size)))) # set nsites to the number of sites where 75% of the species have been sampled. 
+  }
+  
   lr <- nsi*rep*rfp # calculate loop rounds (to be able to make "progress bar")
   sv <- seq(1:nsp) # make a vector of species-numbers
   
@@ -157,7 +230,7 @@ tab <- sstable
   ft[ft>0] = 0  # resetting the results table
   total_table <- list()
   site_table <- list()
-  site_rep_uniq <- ft[,0]
+  site_rep_uniq <- ft#[,0]
   for (sn in 1:nsi){      # looping through the sites one by one
     print(paste0("progress: ", round(((ii/lr) * 100),0) ,"%")) # make a progressline
     for (rn in 1:rep){   # looping through the replicates one by one
@@ -165,7 +238,7 @@ tab <- sstable
       crsp = NULL #resetting the current reference set
       for (jj in 1:rfp){  # loop through and construct the number of reference sites
         if (refspecies == 0){ssrsp <- sample(spr, 1,replace = FALSE, prob = siw)} # set number of reference species to draw, if that option is selected
-        crs <- sample(sv, ssrsp ,replace = FALSE, prob = spw) # draw a number of species IDs from pool. Number is chosen randomly among real sites according to their weights
+        crs <- sample(sv, ssrsp ,replace = replace_sp, prob = spw) # draw a number of species IDs from pool. Number is chosen randomly among real sites according to their weights
         crsp <- c(crsp,crs) # add current selection to total vector of species IDs drawn.
         ii=ii+1
       }
@@ -184,6 +257,7 @@ tab <- sstable
   Adj_uniquity <- Uniqueness/spr
   Uniquenss_table <- ft
   Unique_species <- colSums(ft)
+  av_un_sp <- (Unique_species/colSums(ft != 0))/rep
   nzmean <- function(x) {
     zvals <- x==0
     if (all(zvals)) 0 else mean(x[!zvals])
@@ -191,6 +265,24 @@ tab <- sstable
   average_ssw <- apply(ssw,1,nzmean)
   top10 <- sort(Uniqueness,decreasing = TRUE)[1:20]
   top10sp <- sort(Unique_species,decreasing = TRUE)[1:20]
-  result <- list(simple_site_score=site_cores, uniquity_score=Uniqueness, adjusted_uniquity=Adj_uniquity, uniquity_table=Uniquenss_table, uniquity_species_scores=Unique_species, Summed_species_weights=spw, Average_species_weight_pr_site=average_ssw, Top20_unique_sites=top10, Top20_unique_species=top10sp, removed_singleton_species=removed_species, Accumulated_uniqueness=total_table, site_richness=spr)
+  result <- list(simple_site_score=site_cores,
+                 uniquity_score=Uniqueness, 
+                 adjusted_uniquity=Adj_uniquity, 
+                 uniquity_table=Uniquenss_table, 
+                 uniquity_species_scores=Unique_species, 
+                 Unique_species_avg=av_un_sp, 
+                 Summed_species_weights=spw, 
+                 Average_species_weight_pr_site=average_ssw, 
+                 Top20_unique_sites=top10, 
+                 Top20_unique_species=top10sp, 
+                 removed_singleton_species=removed_species, 
+                 Accumulated_uniqueness=total_table, 
+                 Site_richness=spr,
+                 replicates=rep,
+                 reference_sites=rfp,
+                 Removed_classes = removed_classes,
+                 Removed_sites = removed_sites,
+                 ft
+                 )
   return(result)
 }
