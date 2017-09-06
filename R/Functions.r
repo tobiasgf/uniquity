@@ -80,7 +80,9 @@ require(vegan)
 #Check if a species/site table is present 
 if (missing(sstable)) stop("Need to specify a valid species/site matrix as a data.frame with sites as rownames and species/OTUs as column names")
 
+
 sstable_names <- row.names(sstable)
+sstable <- as.matrix(sstable)
 
 removed_classes <- NULL
 removed_sites <- NULL
